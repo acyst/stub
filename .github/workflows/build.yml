@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  KDK_VERSION: "26.5.2"
+
+jobs:
+  build:
+    # macOS 26 runner (arm64).  Building is universal (x86_64 + arm64), so a
+    # single arch runner is sufficient.
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download and install KDK ${{ env.KDK_VERSION }}
+        run: ./scripts/download-kdk.sh "$KDK_VERSION"
+
+      - name: Build stubfs.kext
+        run: make
+
+      - name: Inspect artifact
+        run: |
+          file "stubfs.kext/Contents/MacOS/stubfs"
+          plutil -lint "stubfs.kext/Contents/Info.plist"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stubfs.kext
+          path: stubfs.kext
+          if-no-files-found: error
