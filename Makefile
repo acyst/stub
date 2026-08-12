@@ -34,6 +34,15 @@ KERNFRAMEWORK := $(if $(strip $(KDK)),\
 		$(MAC_KERNEL_SDK),\
 		$(shell xcrun --sdk macosx --show-sdk-path)/System/Library/Frameworks/Kernel.framework/Headers))
 
+# Fail early with a helpful message when no kernel headers are available.
+ifeq ($(wildcard $(KERNFRAMEWORK)/sys/vnode.h),)
+$(error No kernel headers found at "$(KERNFRAMEWORK)". \
+	Run: make kdk          (downloads + installs the KDK on macOS) \
+	or:  ./scripts/download-kdk.sh 26.5.2 \
+	or:  git clone --depth 1 https://github.com/acidanthera/MacKernelSDK \
+	or set: KERNFRAMEWORK=/path/to/kernel/headers)
+endif
+
 CC      := xcrun --sdk macosx clang
 LIPO    := xcrun lipo
 
@@ -65,9 +74,13 @@ LDFLAGS := -nostdlib \
 
 BINARIES := $(addprefix build/,$(addsuffix /$(BUNDLE_NAME),$(ARCHS)))
 
-.PHONY: all clean load unload reload
+.PHONY: all clean load unload reload kdk
 
 all: $(PRODUCT)
+
+# Download and install the KDK (macOS only, requires sudo).
+kdk:
+	./scripts/download-kdk.sh 26.5.2
 
 # Compile and link one architecture slice (single cc invocation, standard for kexts).
 build/%/$(BUNDLE_NAME): $(SRCS) $(SRCDIR)/stubfs.h
